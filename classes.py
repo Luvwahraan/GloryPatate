@@ -92,11 +92,26 @@ class Viewer:
         return self.mark
 
 
+class Command:
+    def __init__(self, command, callback, description=''):
+        self.name = command
+        self.callback = callback
+        self.description = description
+        
+    def __str__:
+        description = ''
+        if self.description != '':
+            description = ': ' + self.description
+            
+        return self.name + description
 
 
 class Handler:
     def __init__(self, nick, oauth, debug=False):
         self.debug = debug
+        self.except_count = 0
+
+        self.commands = []
 
         self.nick = nick
         self.oauth = oauth
@@ -115,6 +130,19 @@ class Handler:
         self.s = socket.socket()
         self.initdb()
         self.connectIRC()
+        
+        
+    def searchCommand(self, command):
+        for cmd in self.commands:
+            if command == cmd.name:
+                return cmd
+        return False
+        
+    def addCommand(self, name, callback, description=''):
+        if not searchCommand(name):
+            self.commands.append( Command(name, callback, description) )
+            return True
+        return False
         
     def check_ignored(self, viewer):
         req = 'SELECT userid FROM ignored WHERE userid = ? AND channelid = ?'
