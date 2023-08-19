@@ -98,7 +98,7 @@ class Command:
         self.callback = callback
         self.description = description
         
-    def __str__:
+    def __str__(self):
         description = ''
         if self.description != '':
             description = ': ' + self.description
@@ -353,9 +353,9 @@ class Handler:
             
             match viewer.message:
                 case '!channels':
-                    getchannels()
+                    pass
                 case '!patate':
-                    addChannel(viewer)
+                    pass
         except:
             print(traceback.format_exc())
             
