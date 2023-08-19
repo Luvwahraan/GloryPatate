@@ -29,7 +29,6 @@ except:
 
 print('Connecting server: ' + PASS)
 hd = Handler('GloryPatate', PASS, True)
-except_count = 0
 
 
 while True:
@@ -40,10 +39,10 @@ while True:
         exit()
         raise
     except:
-        if except_count > 4:
+        if self.except_count > 4:
             print('Too many errors.')
 
-        except_count += 1
+        self.except_count += 1
         
         print(traceback.format_exc())
         hd.socketconnection()
