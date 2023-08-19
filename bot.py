@@ -42,9 +42,10 @@ while True:
     except:
         if except_count > 4:
             print('Too many errors.')
+
+        except_count += 1
         
         print(traceback.format_exc())
         hd.socketconnection()
         hd.messageloop()
         
-        except_count += 1
