@@ -13,6 +13,71 @@ import math
 import datetime
 import re
 
+
+class Privileges:
+    def __init__(self, notext=False, returning=False, firstmsg=False, follower=False,
+                subscriber=False, turbo=False, vip=False, moderator=False, owner=False):
+        # Ordered highest to lower
+        self.owner = owner
+        self.moderator = moderator
+        self.vip = vip
+        self.subgifter = False
+        self.turbo = turbo
+        self.subscriber = subscriber
+        self.partner = False
+        self.partner = False
+        self.follower = follower
+        self.premium = False
+        self.returning = returning
+        self.firstmsg = firstmsg
+        self.notext = notext
+    
+    def __eq__(self, pr):
+        pself = self.__dict__
+        ppr = pr.__dict__
+        for attribut, value in pself.items():
+            if ppr[attribut] != value:
+                return False
+        return True
+    
+    def __ge__(self, pr):
+        if self > pr or self == pr:
+            return True
+        return False
+    
+    def __le__(self, pr):
+        if self < pr or self == pr:
+            return True
+        return False
+    
+    def __ne__(self, pr):
+        pself = self.__dict__
+        ppr = pr.__dict__
+        for attribut, value in pself.items():
+            if ppr[attribut] != value:
+                return True
+        return False
+    
+    def __lt__(self, pr):
+        pself = self.__dict__
+        ppr = pr.__dict__
+        for attribut, value in pself.items():
+            if ppr[attribut] < value:
+                return True
+            elif value < ppr[attribut]:
+                return False
+        return False
+    
+    def __gt__(self, pr):
+        pself = self.__dict__
+        ppr = pr.__dict__
+        for attribut, value in pself.items():
+            if ppr[attribut] > value:
+                return True
+            elif value > ppr[attribut]:
+                return False
+        return False
+
 class Viewer:
     def __init__(self, message):
         
@@ -24,6 +89,10 @@ class Viewer:
         self.userid = 0
         self.channelid = 0
         self.ignored = False
+        
+        self.command = ''
+        
+        self.privileges = Privileges()
         
         self.addedChannel = []
         
@@ -52,39 +121,52 @@ class Viewer:
         try:
             if self.badges['broadcaster'] > 0:
                 self.mark = '&'
-                self.owner = True
+                self.privileges.owner = True
                 self.points = 0
                 return self.mark
             if self.badges['moderator'] > 0:
                 self.mark += '@'
+                self.privileges.moderator = True
             if self.badges['subscriber'] > 0:
                 self.mark += '$('+ str(self.badges['subscriber']) +')'
+                self.privileges.subscriber = True
                 self.points += 9 + self.badges['subscriber']
                 self.ratio += 5
             if self.badges['premium'] > 0:
                 self.mark += '-'
+                self.privileges.premium = True
                 self.ratio -= 8
             if self.badges['sub-gifter'] > 0:
                 self.mark += 'G('+ str(self.badges['sub-gifter']) +')'
                 self.points += math.floor( self.badges['sub-gifter'] / 20 )
+                self.privileges.subgifter = True
                 self.ratio += 4
             if self.badges['partner'] > 0:
                 self.mark += '̰~'
+                self.privileges.partner = True
                 self.ratio += 1
             if self.badges['vip'] > 0:
                 self.mark += '̰*'
                 self.points += 5
+                self.privileges.vip = True
                 self.ratio += 2
             if self.follower:
                 self.mark += '+'
+                self.privileges.follower = True
                 self.points += 4
                 self.ratio += 1
             if self.badges['founder'] >= 0:
                 self.mark += '#'
+                self.privileges.founder = True
                 self.points += 2
                 self.ratio += 3
-            if self.firstmsg or self.returning:
+            if self.firstmsg:
                 self.mark += '(New)'
+                self.privileges.firstmsg = True
+                self.points += 100
+            if self.returning:
+                self.mark += '(New)'
+                self.privileges.returning = True
                 self.points += 100
         except:
             print(traceback.format_exc())
@@ -93,10 +175,13 @@ class Viewer:
 
 
 class Command:
-    def __init__(self, command, callback, description=''):
+    def __init__(self, command, callback, description, privileges):
         self.name = command
         self.callback = callback
         self.description = description
+        self.privileges = privileges
+
+     
         
     def __str__(self):
         description = ''
@@ -132,17 +217,22 @@ class Handler:
         self.connectIRC()
         
         
-    def searchCommand(self, command):
+    def searchCommand(self, cmdName):
         for cmd in self.commands:
-            if command == cmd.name:
+            if cmdName == cmd.name:
                 return cmd
         return False
-        
-    def addCommand(self, name, callback, description=''):
-        if not searchCommand(name):
-            self.commands.append( Command(name, callback, description) )
+
+
+
+    def addCommand(self, name, callback, description, pr=Privileges( notext=False, firstmsg=False, returning=False,
+               follower=False, subscriber=False, turbo=False,
+               vip=False, moderator=False, owner=True)):
+        if not self.searchCommand(name):            
+            self.commands.append( Command(name, callback, description, pr) )
             return True
         return False
+
         
     def check_ignored(self, viewer):
         req = 'SELECT userid FROM ignored WHERE userid = ? AND channelid = ?'
@@ -316,17 +406,38 @@ class Handler:
 
 
 
-    def commands(self, viewer):
+    def commandsHandler(self, viewer):
         try:
             wordCount = abs( len( viewer.message ) - 1 )
-            viewer.command = viewer.message[0]
-
-            viewer.check_privileges()
             
-            if viewer.owner:
-                pass
+            
+            if viewer.message[0][0] == '!':
+                viewer.command = viewer.message[0][1:].lower()
+                
+                if self.debug:
+                    print( viewer.nick + '(' + str(viewer.userid) +') tries command !' + viewer.command)
+                
+                cmd = self.searchCommand(viewer.command)
+                try:
+                    if cmd.privileges <= viewer.privileges:
+                        print('Running cmd')
+                        cmd.callback(viewer)
+                    else:
+                        print('No enough privileges.')
+                except:
+                    pass
+                    print(traceback.format_exc())
+                
+            else:
+                viewer.command = ''
+
+            
+            
+            
+
                 
 
+            
             if viewer.notext: #or givePoints(viewer.userid):
                 viewer.points = 0
                 #print('no points')
@@ -375,14 +486,14 @@ class Handler:
                 match state[0]:
                     case 'emote-only':
                         if int(state[1]) == 1:
-                            viewer.notext = True
+                            viewer.privileges.notext = True
                         #print(state[0])
                     case 'emotes':
                         viewer.emotes = str.split(state[1], '/')
                         #print(state[0])
                     case 'vip':
                         if int(state[1]) == 1:
-                            viewer.vip = True
+                            viewer.privileges.vip = True
                         #print(state[0])
                     case 'display-name':
                         viewer.nick = state[1]
@@ -394,29 +505,31 @@ class Handler:
                         #print(state[0])
                     case 'turbo':
                         if int(state[1]) == 1:
-                            viewer.turbo = True
+                            viewer.privileges.turbo = True
                         #print(state[0])
                     case 'subscriber':
                         if int(state[1]) == 1:
-                            viewer.subscriber = True
+                            viewer.privileges.subscriber = True
                         #print(state[0])
                     case 'follower':
                         if int(state[1]) == 1:
-                            viewer.follower = True
+                            viewer.privileges.follower = True
                         #print(state[0])
                     case 'first-msg':
                         if int(state[1]) == 1:
-                            viewer.firstmsg = True
+                            viewer.privileges.firstmsg = True
                         #print(state[0])
                     case 'returning-chatter':
                         if int(state[1]) == 1:
-                            viewer.returning = True
+                            viewer.privileges.returning = True
                         #print(state[0])
                     case 'badges':
                         for badge in str.split( state[1], ',' ):
                             tmp = str.split( badge, '/' )
                             viewer.badges[tmp[0]] = int(tmp[1])
                         #print(state[0])
+            
+            viewer.check_privileges()
 
             #cursor.execute('CREATE TABLE users(userid INT PRIMARY KEY, nick TEXT NOT NULL)'
             #cursor.execute('CREATE TABLE userpoints(userid INT NOT NULL, channelid INTEGER NOT NULL, points INT DEFAULT 0)')
@@ -426,7 +539,7 @@ class Handler:
                 self.cursor.execute('INSERT OR IGNORE INTO users (userid, nick) VALUES (?,?)', (viewer.userid, viewer.nick) )
                 self.cursor.execute('INSERT OR IGNORE INTO userpoints (userid, channelid, points) VALUES (?,?,?)',(viewer.userid, viewer.channelid, '0'))
                 if viewer.message != '' and viewer.userid != 0 and viewer.channelid != 0 and viewer.nick != '':
-                    viewer = self.commands(viewer)
+                    viewer = self.commandsHandler(viewer)
                     if viewer.points != 0:
                         #cursor.execute('INSERT OR IGNORE INTO viewers (userid, nick, channel, points) VALUES (?,?,?,?)',(viewer.userid, viewer.nick, viewer.channel, '0'))
                         self.givepoints( viewer )
